@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Custom Timetable Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #dbeef9 ;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-top: 10px;
+    }
+
+    .controls {
+      margin: 20px;
+    }
+
+    input, select {
+      padding: 8px;
+      margin: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    .subject-pool {
+      margin: 15px 0;
+    }
+
+    .subject {
+      display: inline-block;
+      padding: 10px 15px;
+      margin: 5px;
+      background-color: #2c3e50 ;
+      color: white;
+      border-radius: 5px;
+      cursor: grab;
+    }
+
+    table {
+      margin: auto;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 15px;
+      min-width: 100px;
+      height: 50px;
+      text-align: center;
+    }
+
+    td.drop-target {
+      background-color: #e8f0fe;
+    }
+
+    button {
+      margin: 10px 5px;
+      padding: 10px 15px;
+      background: #024a8a;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0d47a1;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📅 Timetable Generator </h1>
+
+  <div class="controls">
+    <input type="text" id="newSubject" placeholder="New Subject">
+    <button onclick="addSubject()">➕ Add Subject</button>
+
+    <input type="text" id="newTimeSlot" placeholder="Time Slot (e.g., 4 - 5)">
+    <button onclick="addTimeSlot()">➕ Add Time Slot</button>
+
+    <input type="text" id="newDay" placeholder="New Day (e.g., Saturday)">
+    <button onclick="addDay()">➕ Add Day</button>
+  </div>
+
+  <div class="subject-pool" id="subjectPool">
+    <div class="subject" draggable="true">Math</div>
+    <div class="subject" draggable="true">English</div>
+  </div>
+
+  <button onclick="saveTimetable()">💾 Save</button>
+  <button onclick="loadTimetable()">📂 Load</button>
+  <button onclick="clearTimetable()">🗑️ Clear</button>
+
+  <br><br>
+  <table id="timetable">
+    <thead>
+      <tr id="headerRow">
+        <th>Time</th>
+        <th>Mon</th>
+        <th>Tue</th>
+        <th>Wed</th>
+        <th>Thu</th>
+        <th>Fri</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <tr><td>9 - 10</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>10 - 11</td><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    const subjectPool = document.getElementById("subjectPool");
+    const timetable = document.getElementById("timetable");
+    const tableBody = document.getElementById("tableBody");
+    const headerRow = document.getElementById("headerRow");
+
+    let draggedText = "";
+
+    // Initial drag-and-drop setup
+    function setupDragAndDrop() {
+      const subjects = document.querySelectorAll('.subject');
+      const cells = document.querySelectorAll('#timetable td:not(:first-child)');
+
+      subjects.forEach(subject => {
+        subject.addEventListener('dragstart', (e) => {
+          draggedText = e.target.innerText;
+        });
+      });
+
+      cells.forEach(cell => {
+        cell.classList.add('drop-target');
+
+        cell.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          cell.style.backgroundColor = '#d0ebff';
+        });
+
+        cell.addEventListener('dragleave', () => {
+          cell.style.backgroundColor = '#e8f0fe';
+        });
+
+        cell.addEventListener('drop', () => {
+          cell.innerText = draggedText;
+          cell.style.backgroundColor = '#e8f0fe';
+        });
+      });
+    }
+
+    setupDragAndDrop();
+
+    // Add new subject
+    function addSubject() {
+      const subjectName = document.getElementById("newSubject").value.trim();
+      if (subjectName === "") return;
+      const div = document.createElement("div");
+      div.className = "subject";
+      div.draggable = true;
+      div.innerText = subjectName;
+      subjectPool.appendChild(div);
+      document.getElementById("newSubject").value = "";
+      setupDragAndDrop();
+    }
+
+    // Add new time slot row
+    function addTimeSlot() {
+      const time = document.getElementById("newTimeSlot").value.trim();
+      if (time === "") return;
+
+      const row = document.createElement("tr");
+      const days = headerRow.querySelectorAll("th").length - 1;
+
+      const timeCell = document.createElement("td");
+      timeCell.innerText = time;
+      row.appendChild(timeCell);
+
+      for (let i = 0; i < days; i++) {
+        const cell = document.createElement("td");
+        row.appendChild(cell);
+      }
+
+      tableBody.appendChild(row);
+      document.getElementById("newTimeSlot").value = "";
+      setupDragAndDrop();
+    }
+
+    // Add new day (column)
+    function addDay() {
+      const day = document.getElementById("newDay").value.trim();
+      if (day === "") return;
+
+      // Add header
+      const th = document.createElement("th");
+      th.innerText = day;
+      headerRow.appendChild(th);
+
+      // Add cell to each existing row
+      Array.from(tableBody.rows).forEach(row => {
+        const cell = document.createElement("td");
+        row.appendChild(cell);
+      });
+
+      document.getElementById("newDay").value = "";
+      setupDragAndDrop();
+    }
+
+    // Save timetable
+    function saveTimetable() {
+      const data = [];
+      Array.from(tableBody.rows).forEach(row => {
+        const rowData = [];
+        Array.from(row.cells).forEach(cell => {
+          rowData.push(cell.innerText);
+        });
+        data.push(rowData);
+      });
+      const headers = Array.from(headerRow.children).map(th => th.innerText);
+      localStorage.setItem("timetableHeaders", JSON.stringify(headers));
+      localStorage.setItem("timetableData", JSON.stringify(data));
+      alert("Timetable saved!");
+    }
+
+    // Load timetable
+    function loadTimetable() {
+      const headers = JSON.parse(localStorage.getItem("timetableHeaders"));
+      const data = JSON.parse(localStorage.getItem("timetableData"));
+
+      if (!headers || !data) {
+        alert("No saved timetable found.");
+        return;
+      }
+
+      // Rebuild header
+      headerRow.innerHTML = "";
+      headers.forEach(text => {
+        const th = document.createElement("th");
+        th.innerText = text;
+        headerRow.appendChild(th);
+      });
+
+      // Rebuild body
+      tableBody.innerHTML = "";
+      data.forEach(rowData => {
+        const row = document.createElement("tr");
+        rowData.forEach(cellText => {
+          const cell = document.createElement("td");
+          cell.innerText = cellText;
+          row.appendChild(cell);
+        });
+        tableBody.appendChild(row);
+      });
+
+      setupDragAndDrop();
+      alert("Timetable loaded!");
+    }
+
+    // Clear timetable
+    function clearTimetable() {
+  localStorage.removeItem("timetableHeaders");
+  localStorage.removeItem("timetableData");
+
+  // Reset header
+  headerRow.innerHTML = "";
+  const defaultDays = ["Time", "Mon", "Tue", "Wed", "Thu", "Fri"];
+  defaultDays.forEach(day => {
+    const th = document.createElement("th");
+    th.innerText = day;
+    headerRow.appendChild(th);
+  });
+
+  // Reset body
+  tableBody.innerHTML = "";
+  const defaultTimes = ["9 - 10", "10 - 11"];
+  defaultTimes.forEach(time => {
+    const row = document.createElement("tr");
+    const timeCell = document.createElement("td");
+    timeCell.innerText = time;
+    row.appendChild(timeCell);
+
+    for (let i = 0; i < defaultDays.length - 1; i++) {
+      const cell = document.createElement("td");
+      row.appendChild(cell);
+    }
+
+    tableBody.appendChild(row);
+  });
+
+  setupDragAndDrop();
+  alert("Timetable cleared and reset!");
+}
+
+  </script>
+
+</body>
+</html>
